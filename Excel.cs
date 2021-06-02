@@ -5,11 +5,12 @@ using System.IO;
 
 namespace ExcelHelper
 {
+    public delegate void SaveSucceseful(string mess);
     public class Excel
     {
-        public List<List<string>> Table = new List<List<string>>();
+        public List<List<string>> Table = new();
 
-
+        public event SaveSucceseful SaveSucces;
         // copywrite with Github (because with my VS is doesn`t work). Creator ukushu. Original: https://github.com/ukushu/DataExporter
         // 
         public void FileOpen(string path)
@@ -29,7 +30,7 @@ namespace ExcelHelper
 
                     string targetCellValue = (formula.Length == 0) ? value : "=" + formula;
 
-                    Table[Table.Count - 1].Add(targetCellValue);
+                    Table[^1].Add(targetCellValue);
                 }
             }
         }
@@ -38,7 +39,7 @@ namespace ExcelHelper
         {
             CreateDirIfNotExist(path, true);
 
-            using (XLWorkbook wb = new XLWorkbook())
+            using (XLWorkbook wb = new())
             {
                 var workSheet = wb.Worksheets.Add("Sample Sheet");
 
@@ -60,6 +61,39 @@ namespace ExcelHelper
                 }
 
                 wb.SaveAs(path);
+                SaveSucces("Сохранение выполнено успешно");
+            }
+        }
+
+        public void FileSave(string path, List<List<string>> otherData)
+        {
+            Table = otherData;
+
+            CreateDirIfNotExist(path, true);
+
+            using (XLWorkbook wb = new())
+            {
+                var workSheet = wb.Worksheets.Add("Sample Sheet");
+
+                for (int row = 0; row < Table.Count; row++)
+                {
+                    for (int col = 0; col < Table[row].Count; col++)
+                    {
+                        var cellAdress = GetExcelPos(row, col);
+
+                        if (Table[row][col].StartsWith("="))
+                        {
+                            workSheet.Cell(cellAdress).FormulaA1 = Table[row][col];
+                        }
+                        else
+                        {
+                            workSheet.Cell(cellAdress).Value = Table[row][col];
+                        }
+                    }
+                }
+
+                wb.SaveAs(path);
+                SaveSucces("Сохранение выполнено успешно");
             }
         }
 
