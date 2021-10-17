@@ -2,15 +2,19 @@
 using System.Linq;
 using ClosedXML.Excel;
 using System.IO;
+using System;
+using System.Data;
 
 namespace ExcelHelper
 {
     public delegate void SaveSucceseful(string mess);
+    public delegate void ErrorHandler(int code, string msg);
     public class Excel
     {
         public List<List<string>> Table = new();
 
         public event SaveSucceseful SaveSucces;
+        public event ErrorHandler ErrHandle;
         // copywrite with Github (because with my VS is doesn`t work). Creator ukushu. Original: https://github.com/ukushu/DataExporter
         // 
         public void FileOpen(string path)
@@ -18,21 +22,28 @@ namespace ExcelHelper
 
             var workbook = new XLWorkbook(path);
             var ws1 = workbook.Worksheet(1);
-
-            foreach (var xlRow in ws1.RangeUsed().Rows())
+            try
             {
-                Table.Add(new List<string>());
-
-                foreach (var xlCell in xlRow.Cells())
+                foreach (var xlRow in ws1.RangeUsed().Rows())
                 {
-                    var formula = xlCell.FormulaA1;
-                    var value = xlCell.Value.ToString();
+                    Table.Add(new List<string>());
 
-                    string targetCellValue = (formula.Length == 0) ? value : "=" + formula;
+                    foreach (var xlCell in xlRow.Cells())
+                    {
+                        var formula = xlCell.FormulaA1;
+                        var value = xlCell.Value.ToString();
 
-                    Table[^1].Add(targetCellValue);
+                        string targetCellValue = (formula.Length == 0) ? value : "=" + formula;
+
+                        Table[^1].Add(targetCellValue);
+                    }
                 }
             }
+            catch (Exception e)
+            {
+                ErrHandle(1, e.Message);
+            }
+
         }
 
         public void FileSave(string path)
@@ -125,6 +136,30 @@ namespace ExcelHelper
             {
                 _ = Directory.CreateDirectory(dirPath);
             }
+        }
+
+        public static DataTable ToDataTable (List<List<string>> matrix)
+        {
+            DataTable res = new();
+
+            for (int i = 0; i < matrix.Count; i++)
+            {
+                _ = res.Columns.Add($"{i + 1}");
+            }
+
+            for (int i = 0; i < matrix.Count; i++)
+            {
+                DataRow row = res.NewRow();
+
+                for (int j = 0; j < matrix[i].Count; j++)
+                {
+                    row[j] = matrix[i][j];
+                }
+
+                res.Rows.Add(row);
+            }
+
+            return res;
         }
     }
 }
